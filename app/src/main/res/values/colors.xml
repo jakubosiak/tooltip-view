@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">@color/blueDark</color>
+    <color name="colorPrimaryDark">@color/blueVeryDark2</color>
+    <color name="colorAccent">@color/green</color>
+
+
+    <color name="black">#000000</color>
+    <color name="grayBlue">#2b303c</color>
+    <color name="grayDark">#3c4249</color>
+    <color name="graySemiDark">#535456</color>
+    <color name="gray">#8b8c90</color>
+    <color name="grayLight">#BDBDBD</color>
+    <color name="white">#FFFFFF</color>
+
+    <color name="blueLight">#5AA9F8</color>
+    <color name="blue">#3887d6</color>
+    <color name="blueDark">#3867d6</color>
+    <color name="blueDark2">#21486a</color>
+    <color name="blueDark3">#1d334b</color>
+    <color name="blueDark5">#253041</color>
+    <color name="blueDark4">#16293f</color>
+    <color name="blueDark6">#1f2532</color>
+    <color name="blueVeryDark1">#1c212c</color>
+    <color name="blueVeryDark2">#181d24</color>
+    <color name="transparentBlueVeryDark">#F8181d24</color>
+    <color name="transparentBlue">#552A2F46</color>
+    <color name="blueLink">#1b2bd2</color>
+
+    <color name="purple">#5362BA</color>
+    <color name="purpleDark">#47549E</color>
+
+    <color name="facebook">#4668a4</color>
+    <color name="facebookDark">#365899</color>
+
+    <color name="linkedin">#1484bf</color>
+    <color name="linkedinDark">#1464bf</color>
+
+    <color name="google">#dd4b39</color>
+    <color name="googleDark">#993528</color>
+
+    <color name="greenLight">#5FE5AD</color>
+    <color name="green">#3ec38b</color>
+    <color name="greenDark">#3ea38b</color>
+
+    <color name="red">#ce0d26</color>
+    <color name="redDark">#a50d13</color>
+
+    <color name="transparent">#00000000</color>
+    <color name="transparencyBlack100">#00000000</color>
+    <color name="transparencyBlack90">#1A000000</color>
+    <color name="transparencyBlack80">#33000000</color>
+    <color name="transparencyBlack70">#4D000000</color>
+    <color name="transparencyBlack60">#66000000</color>
+    <color name="transparencyBlack50">#80000000</color>
+    <color name="transparencyBlack40">#99000000</color>
+    <color name="transparencyBlack30">#B3000000</color>
+    <color name="transparencyBlack20">#CC000000</color>
+    <color name="transparencyBlack10">#E6000000</color>
+
+    <color name="transparencyWhite100">#00FFFFFF</color>
+    <color name="transparencyWhite90">#1AFFFFFF</color>
+    <color name="transparencyWhite80">#33FFFFFF</color>
+    <color name="transparencyWhite70">#4DFFFFFF</color>
+    <color name="transparencyWhite60">#66FFFFFF</color>
+    <color name="transparencyWhite50">#80FFFFFF</color>
+    <color name="transparencyWhite40">#99FFFFFF</color>
+    <color name="transparencyWhite30">#B3FFFFFF</color>
+    <color name="transparencyWhite20">#CCFFFFFF</color>
+    <color name="transparencyWhite10">#E6FFFFFF</color>
+
+    <color name="warning_color">#F44336</color>
+    <color name="hint_color">#FFFFFF</color>
+    <color name="success_color">#4CAF50</color>
+</resources>
