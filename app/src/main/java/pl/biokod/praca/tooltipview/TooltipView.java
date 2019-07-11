@@ -109,13 +109,6 @@ public class TooltipView extends View {
         getDeclaredAttrs(attrs);
         setPaintBackgroundStroke();
         setPaintBackgroundFill();
-
-        this.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.v("viewClicked", "true");
-            }
-        });
     }
 
     private void getDeclaredAttrs(AttributeSet attrs) {

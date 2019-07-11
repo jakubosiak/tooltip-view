@@ -9,6 +9,7 @@ import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentManager;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -66,7 +67,6 @@ public class TooltipDialog extends DialogFragment {
                 setupDialogStyle();
             }
         });
-
     }
 
     private void setupDialogStyle() {
@@ -79,8 +79,24 @@ public class TooltipDialog extends DialogFragment {
         window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         window.setGravity(Gravity.TOP);
         window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        allowClickThroughDialogWindow(window);
+
         setupWindowLayoutParams(window);
     }
+
+    private void allowClickThroughDialogWindow(Window window) {
+        window.setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
+        window.setFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH, WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
+        window.getDecorView().setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                dismiss();
+                return false;
+            }
+        });
+    }
+
 
     private void setupWindowLayoutParams(Window window) {
         WindowManager.LayoutParams layoutParams = window.getAttributes();
