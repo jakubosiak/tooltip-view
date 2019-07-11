@@ -12,9 +12,18 @@ import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 
 public class TooltipView extends View {
+
+    enum ArcPosition {
+        BOTTOM_RIGHT, BOTTOM_LEFT, TOP_LEFT, TOP_RIGHT
+    }
+
+    enum AnchorSide {
+        TOP, BOTTOM
+    }
 
     public TooltipView(Context context) {
         super(context);
@@ -31,103 +40,224 @@ public class TooltipView extends View {
         initView(attrs);
     }
 
-    Paint paintBackgroundStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
-    Paint paintBackgroundFill = new Paint(Paint.ANTI_ALIAS_FLAG);
-    Paint paint2 = new Paint();
+    private Paint paintBackgroundStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private Paint paintBackgroundFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
 
-    private float anchorHeight = getResources().getDimension(R.dimen.TooltipAnchorHeight);
-    private float anchorWidth = getResources().getDimension(R.dimen.TooltipAnchorHeight);
-    private float textPaddingTop = getResources().getDimension(R.dimen.TooltipAnchorHeight);
-    private float textPaddingBottom = getResources().getDimension(R.dimen.TooltipAnchorHeight);
-    private float textPaddingEnd = getResources().getDimension(R.dimen.TooltipAnchorHeight);
-    private float textPaddingStart = getResources().getDimension(R.dimen.TooltipAnchorHeight);
+    private Path backgroundPath = new Path();
 
-    void initView(AttributeSet attrs) {
-        getDeclaredAttrs(attrs);
-        paintBackgroundStroke.setColor(ContextCompat.getColor(getContext(), R.color.gray));
-        paintBackgroundStroke.setStrokeCap(Paint.Cap.ROUND);
-        paintBackgroundStroke.setStrokeWidth(12f);
-        paintBackgroundStroke.setStyle(Paint.Style.STROKE);
+    private float backgroundCornerSize;
+    private float anchorHeight;
+    private float anchorWidth;
 
-        paintBackgroundFill.setColor(ContextCompat.getColor(getContext(), R.color.blue));
-        paintBackgroundFill.setStrokeCap(Paint.Cap.ROUND);
-        paintBackgroundFill.setStyle(Paint.Style.FILL);
+    private float textPaddingTop;
+    private float textPaddingBottom;
+    private float textPaddingEnd;
+    private float textPaddingStart;
 
-        paint2.setStyle(Paint.Style.FILL);
-        paint2.setColor(ContextCompat.getColor(getContext(), R.color.red));
-        paint2.setTextSize(100f);
+    private int pathLastX = 0;
+    private int pathLastY = 0;
+
+    private AnchorSide anchorSide = AnchorSide.TOP;
+
+    private int clickedViewX = -1;
+    private int clickedViewY = -1;
+    private int clickedViewWidth;
+    private int clickedViewHeight;
+
+    private StaticLayout staticLayout;
+    private String text = "";
+
+    public void setTooltipData(TooltipData tooltipData) {
+        if (tooltipData == null)
+            return;
+
+        clickedViewX = tooltipData.getClickedViewX();
+        clickedViewY = tooltipData.getClickedViewY();
+        clickedViewWidth = tooltipData.getClickedViewWidth();
+        clickedViewHeight = tooltipData.getClickedViewHeight();
+        text = tooltipData.getTooltipText();
     }
 
-    private int clickedViewX, clickedViewY;
-    private int clickedViewWidth, clickedViewHeight;
-
-    public void setClickedViewCoords(int x, int y, int width, int height) {
-        clickedViewX = x;
-        clickedViewY = y;
-        clickedViewWidth = width;
-        clickedViewHeight = height;
+    public void refresh() {
+        staticLayout = createStaticLayoutWithText();
+        resolveAnchorSidePlacement();
         requestLayout();
         invalidate();
+    }
+
+    public int getYOnScreenPointingTheClickedView() {
+        switch (anchorSide) {
+            case TOP:
+                return getClickedViewCenterYBottom();
+            case BOTTOM:
+                return getClickedViewCenterYTop() - getViewHeight();
+        }
+        return 0;
+    }
+
+    public AnchorSide getAnchorSide() {
+        return anchorSide;
+    }
+
+    public float getAnchorHeight() {
+        return anchorHeight;
+    }
+
+    private void initView(AttributeSet attrs) {
+        setVisibility(View.GONE);
+        getDeclaredAttrs(attrs);
+        setPaintBackgroundStroke();
+        setPaintBackgroundFill();
+
+        this.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.v("viewClicked", "true");
+            }
+        });
     }
 
     private void getDeclaredAttrs(AttributeSet attrs) {
         TypedArray customAttrs = getContext().obtainStyledAttributes(attrs, R.styleable.TooltipView);
         anchorHeight = customAttrs.getDimension(R.styleable.TooltipView_anchorHeight, getResources().getDimension(R.dimen.TooltipAnchorHeight));
-        anchorWidth = customAttrs.getDimension(R.styleable.TooltipView_anchorWidth, getResources().getDimension(R.dimen.TooltipAnchorHeight));
+        anchorWidth = customAttrs.getDimension(R.styleable.TooltipView_anchorWidth, getResources().getDimension(R.dimen.TooltipAnchorWidth));
+        paintBackgroundStroke.setStrokeWidth(customAttrs.getDimension(R.styleable.TooltipView_strokeWidth, getResources().getDimension(R.dimen.TooltipStrokeWidth)));
+        paintBackgroundStroke.setColor(customAttrs.getColor(R.styleable.TooltipView_strokeColor, ContextCompat.getColor(getContext(), R.color.gray)));
+        paintBackgroundFill.setColor(customAttrs.getColor(R.styleable.TooltipView_backgroundColor, ContextCompat.getColor(getContext(), R.color.blue)));
+        textPaint.setTextSize(customAttrs.getDimension(R.styleable.TooltipView_textSize, getResources().getDimension(R.dimen.TooltipTextSize)));
+        textPaint.setColor(customAttrs.getColor(R.styleable.TooltipView_textColor, ContextCompat.getColor(getContext(), R.color.white)));
+        backgroundCornerSize = customAttrs.getDimension(R.styleable.TooltipView_backgroundCorner, getResources().getDimension(R.dimen.TooltipBackgroundCorner));
+        textPaddingTop = customAttrs.getDimension(R.styleable.TooltipView_textPaddingTop, getResources().getDimension(R.dimen.TooltipTextPaddingTop));
+        textPaddingBottom = customAttrs.getDimension(R.styleable.TooltipView_textPaddingBottom, getResources().getDimension(R.dimen.TooltipTextPaddingBottom));
+        textPaddingStart = customAttrs.getDimension(R.styleable.TooltipView_textPaddingSide, getResources().getDimension(R.dimen.TooltipTextPaddingSide));
+        textPaddingEnd = customAttrs.getDimension(R.styleable.TooltipView_textPaddingSide, getResources().getDimension(R.dimen.TooltipTextPaddingSide));
         customAttrs.recycle();
     }
 
-    Path path = new Path();
+    private void setPaintBackgroundStroke() {
+        paintBackgroundStroke.setStrokeCap(Paint.Cap.ROUND);
+        paintBackgroundStroke.setStyle(Paint.Style.STROKE);
+    }
 
-    float arcSize = getResources().getDimension(R.dimen.TooltipBackgroundCorner);
+    private void setPaintBackgroundFill() {
+        paintBackgroundFill.setStrokeCap(Paint.Cap.ROUND);
+        paintBackgroundFill.setStyle(Paint.Style.FILL);
+    }
 
-    private void drawViewPath(Canvas canvas, StaticLayout textStaticLayout) {
-        if (drawAnchorTop) {
-            moveTo(path, getClickedViewCenterX(), getClickedViewCenterYBottom());
-            addLine(path, 0, anchorHeight);
-            addLine(path, 0, textPaddingTop);
-            addLine(path, 0, textStaticLayout.getHeight() - arcSize);
-            addLine(path, 0, textPaddingBottom);
-            addArcClockwise(path, arcSize, ArcPosition.BOTTOM_RIGHT);
-            addLine(path, -textPaddingEnd, 0);
-            addLine(path, -textStaticLayout.getWidth() + arcSize * 2, 0);
-            addLine(path, -textPaddingStart, 0);
-            addArcClockwise(path, arcSize, ArcPosition.BOTTOM_LEFT);
-            addLine(path, 0, -textPaddingBottom);
-            addLine(path, 0, -textStaticLayout.getHeight() + arcSize * 2);
-            addLine(path, 0, -textPaddingTop);
-            addArcClockwise(path, arcSize, ArcPosition.TOP_LEFT);
-            addLine(path, textPaddingStart, 0);
-            addLine(path, textStaticLayout.getWidth() - arcSize, 0);
-            addLine(path, textPaddingEnd - anchorWidth, 0);
-            path.close();
-            canvas.drawPath(path, paintBackgroundFill);
-            canvas.drawPath(path, paintBackgroundStroke);
-        } else {
-            moveTo(path, getClickedViewCenterX(), getClickedViewCenterYTop());
-            addLine(path, 0, -anchorHeight);
-            addLine(path, 0, -textPaddingBottom);
-            addLine(path, 0, -textStaticLayout.getHeight() + arcSize);
-            addLine(path, 0, -textPaddingTop);
-            addArcCounterClockwise(path, arcSize, ArcPosition.TOP_RIGHT);
-            addLine(path, -textPaddingEnd, 0);
-            addLine(path, -textStaticLayout.getWidth() + arcSize * 2, 0);
-            addLine(path, -textPaddingStart, 0);
-            addArcCounterClockwise(path, arcSize, ArcPosition.TOP_LEFT);
-            addLine(path, 0, textPaddingTop);
-            addLine(path, 0, textStaticLayout.getHeight() - arcSize * 2);
-            addLine(path, 0, textPaddingBottom);
-            addArcCounterClockwise(path, arcSize, ArcPosition.BOTTOM_LEFT);
-            addLine(path, textPaddingStart, 0);
-            addLine(path, textStaticLayout.getWidth() - arcSize, 0);
-            addLine(path, textPaddingEnd - anchorWidth, 0);
-            path.close();
-            canvas.drawPath(path, paintBackgroundFill);
-            canvas.drawPath(path, paintBackgroundStroke);
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (hideViewIfDataNotSet()) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+            return;
+        }
+
+        setMeasuredDimension(getDeviceWidth() - getViewPaddingSide() * 2 + (getBackgroundStrokeWidth() * 2), getViewHeight());
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        if (hideViewIfDataNotSet())
+            return;
+
+        drawBackground(canvas, staticLayout);
+        drawStaticLayoutText(canvas, staticLayout);
+    }
+
+    private boolean hideViewIfDataNotSet() {
+        if (clickedViewX == -1) {
+            setVisibility(View.GONE);
+            return true;
+        }
+        return false;
+    }
+
+    private void resolveAnchorSidePlacement() {
+        if (getClickedViewCenterY() < getResources().getDisplayMetrics().heightPixels / 2f)
+            anchorSide = AnchorSide.TOP;
+        else
+            anchorSide = AnchorSide.BOTTOM;
+    }
+
+    private StaticLayout createStaticLayoutWithText() {
+        return new StaticLayout(text, textPaint, getTextStaticLayoutWidth(), Layout.Alignment.ALIGN_CENTER, 1, 0, false);
+    }
+
+    private void drawBackground(Canvas canvas, StaticLayout textStaticLayout) {
+        switch (anchorSide) {
+            case TOP:
+                drawBackgroundWithAnchorTop(canvas, textStaticLayout);
+                break;
+            case BOTTOM:
+                drawBackgroundWithAnchorBottom(canvas, textStaticLayout);
+                break;
         }
     }
 
-    private int pathLastX = 0, pathLastY = 0;
+    private void drawStaticLayoutText(Canvas canvas, StaticLayout textStaticLayout) {
+        canvas.save();
+        translateCanvasToDrawText(canvas);
+        textStaticLayout.draw(canvas);
+        canvas.restore();
+    }
+
+    private void translateCanvasToDrawText(Canvas canvas) {
+        switch (anchorSide) {
+            case TOP:
+                canvas.translate(textPaddingStart, anchorHeight + textPaddingTop);
+                break;
+            case BOTTOM:
+                canvas.translate(textPaddingStart, textPaddingTop);
+                break;
+        }
+    }
+
+    private void drawBackgroundWithAnchorTop(Canvas canvas, StaticLayout textStaticLayout) {
+        moveTo(backgroundPath, getCanvasStartPositionX(), getCanvasStartPositionY());
+        addLine(backgroundPath, 0, anchorHeight);
+        addLine(backgroundPath, 0, textPaddingTop);
+        addLine(backgroundPath, 0, textStaticLayout.getHeight() - backgroundCornerSize);
+        addLine(backgroundPath, 0, textPaddingBottom);
+        addArcClockwise(backgroundPath, backgroundCornerSize, ArcPosition.BOTTOM_RIGHT);
+        addLine(backgroundPath, -textPaddingEnd, 0);
+        addLine(backgroundPath, -textStaticLayout.getWidth() + backgroundCornerSize * 2, 0);
+        addLine(backgroundPath, -textPaddingStart, 0);
+        addArcClockwise(backgroundPath, backgroundCornerSize, ArcPosition.BOTTOM_LEFT);
+        addLine(backgroundPath, 0, -textPaddingBottom);
+        addLine(backgroundPath, 0, -textStaticLayout.getHeight() + backgroundCornerSize * 2);
+        addLine(backgroundPath, 0, -textPaddingTop);
+        addArcClockwise(backgroundPath, backgroundCornerSize, ArcPosition.TOP_LEFT);
+        addLine(backgroundPath, textPaddingStart, 0);
+        addLine(backgroundPath, textStaticLayout.getWidth() - backgroundCornerSize - anchorWidth, 0);
+        addLine(backgroundPath, textPaddingEnd, 0);
+        backgroundPath.close();
+        canvas.drawPath(backgroundPath, paintBackgroundFill);
+        canvas.drawPath(backgroundPath, paintBackgroundStroke);
+    }
+
+    private void drawBackgroundWithAnchorBottom(Canvas canvas, StaticLayout textStaticLayout) {
+        moveTo(backgroundPath, getCanvasStartPositionX(), getCanvasStartPositionY());
+        addLine(backgroundPath, 0, -anchorHeight);
+        addLine(backgroundPath, 0, -textPaddingBottom);
+        addLine(backgroundPath, 0, -textStaticLayout.getHeight() + backgroundCornerSize);
+        addLine(backgroundPath, 0, -textPaddingTop);
+        addArcCounterClockwise(backgroundPath, backgroundCornerSize, ArcPosition.TOP_RIGHT);
+        addLine(backgroundPath, -textPaddingEnd, 0);
+        addLine(backgroundPath, -textStaticLayout.getWidth() + backgroundCornerSize * 2, 0);
+        addLine(backgroundPath, -textPaddingStart, 0);
+        addArcCounterClockwise(backgroundPath, backgroundCornerSize, ArcPosition.TOP_LEFT);
+        addLine(backgroundPath, 0, textPaddingTop);
+        addLine(backgroundPath, 0, textStaticLayout.getHeight() - backgroundCornerSize * 2);
+        addLine(backgroundPath, 0, textPaddingBottom);
+        addArcCounterClockwise(backgroundPath, backgroundCornerSize, ArcPosition.BOTTOM_LEFT);
+        addLine(backgroundPath, textPaddingStart, 0);
+        addLine(backgroundPath, textStaticLayout.getWidth() - backgroundCornerSize - anchorWidth, 0);
+        addLine(backgroundPath, textPaddingEnd, 0);
+        backgroundPath.close();
+        canvas.drawPath(backgroundPath, paintBackgroundFill);
+        canvas.drawPath(backgroundPath, paintBackgroundStroke);
+    }
 
     private void moveTo(Path path, int x, int y) {
         path.moveTo(x, y);
@@ -139,10 +269,6 @@ public class TooltipView extends View {
         path.lineTo(pathLastX + x, pathLastY + y);
         pathLastX = pathLastX + Math.round(x);
         pathLastY = pathLastY + Math.round(y);
-    }
-
-    enum ArcPosition {
-        BOTTOM_RIGHT, BOTTOM_LEFT, TOP_LEFT, TOP_RIGHT
     }
 
     private void addArcClockwise(Path path, float arcSize, ArcPosition arcPosition) {
@@ -204,7 +330,33 @@ public class TooltipView extends View {
         }
     }
 
-    private boolean drawAnchorTop = false;
+
+    private int getViewHeight() {
+        return (int) (staticLayout.getHeight() + textPaddingTop + textPaddingBottom + anchorHeight + getBackgroundStrokeWidth() * 2);
+    }
+
+    private int getTextStaticLayoutWidth() {
+        return getDeviceWidth() - getViewPaddingSide() * 2 - Math.round(textPaddingStart) - Math.round(textPaddingEnd);
+    }
+
+    private int getCanvasStartPositionX() {
+        return getClickedViewCenterX() - getViewPaddingSide() + getBackgroundStrokeWidth();
+    }
+
+    private int getCanvasStartPositionY() {
+        switch (anchorSide) {
+            case TOP:
+                return getBackgroundStrokeWidth();
+            case BOTTOM:
+                return getHeight() - getBackgroundStrokeWidth();
+            default:
+                return getBackgroundStrokeWidth();
+        }
+    }
+
+    private int getBackgroundStrokeWidth() {
+        return (int) paintBackgroundStroke.getStrokeWidth();
+    }
 
     private int getClickedViewCenterX() {
         return clickedViewX + clickedViewWidth / 2;
@@ -223,50 +375,10 @@ public class TooltipView extends View {
     }
 
     private int getViewPaddingSide() {
-        return Math.abs(getDeviceWidth() - getClickedViewCenterX());
+        return Math.max(0, getDeviceWidth() - getClickedViewCenterX());
     }
 
     private int getDeviceWidth() {
         return getResources().getDisplayMetrics().widthPixels;
-    }
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        StaticLayout staticLayout = createStaticLayoutWithText();
-        if (staticLayout == null)
-            return;
-        drawViewPath(canvas, staticLayout);
-        drawStaticLayoutText(canvas, staticLayout);
-    }
-
-    private void drawStaticLayoutText(Canvas canvas, StaticLayout textStaticLayout) {
-        if (drawAnchorTop)
-            canvas.translate(getViewPaddingSide() + textPaddingStart, anchorHeight + getClickedViewCenterYBottom() + textPaddingTop);
-        else
-            canvas.translate(getViewPaddingSide() + textPaddingStart, getClickedViewCenterYTop() - anchorHeight - textPaddingBottom - textStaticLayout.getHeight());
-
-        textStaticLayout.draw(canvas);
-        canvas.save();
-    }
-
-    private StaticLayout createStaticLayoutWithText() {
-        String text = "It looks like your AMEX account has been locked.\n\nLogin or contact AMEX directly to unlock your account and re-enter your credentials into Wayfarer Points app.";
-
-
-        TextPaint myTextPaint = new TextPaint();
-        myTextPaint.setAntiAlias(true);
-        myTextPaint.setTextSize(16 * getResources().getDisplayMetrics().density);
-        myTextPaint.setColor(ContextCompat.getColor(getContext(), R.color.red));
-
-        int width = getDeviceWidth() - getViewPaddingSide() * 2 - Math.round(textPaddingStart) - Math.round(textPaddingEnd);
-        if (width < 0)
-            return null;
-
-        Layout.Alignment alignment = Layout.Alignment.ALIGN_CENTER;
-        float spacingMultiplier = 1;
-        float spacingAddition = 0;
-
-        return new StaticLayout(text, myTextPaint, width, alignment, spacingMultiplier, spacingAddition, false);
     }
 }

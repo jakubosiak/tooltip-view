@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <dimen name="TooltipBackgroundCorner">15dp</dimen>
 
     <dimen name="TooltipAnchorHeight">20dp</dimen>
-    <dimen name="TooltipBackgroundCorner">15dp</dimen>
     <dimen name="TooltipAnchorWidth">20dp</dimen>
+
+    <dimen name="TooltipStrokeWidth">3dp</dimen>
+
+    <dimen name="TooltipTextPaddingTop">20dp</dimen>
+    <dimen name="TooltipTextPaddingSide">20dp</dimen>
+    <dimen name="TooltipTextPaddingBottom">20dp</dimen>
+
+    <dimen name="TooltipTextSize">16sp</dimen>
 </resources>
