@@ -20,7 +20,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
-    public void onClick(View v) {
+    public void onClick(final View v) {
         ConstraintLayout constraintLayout = findViewById(R.id.root);
         int[] locInWindow = new int[2];
         constraintLayout.getLocationInWindow(locInWindow);
@@ -31,8 +31,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         TooltipData tooltipData = new TooltipData(clickedViewX, clickedViewY, v.getWidth(), v.getHeight(), v.getPaddingStart(), v.getPaddingTop(), v.getPaddingEnd(), v.getPaddingBottom());
         tooltipData.setIncludeViewPaddingCalculations(true);
         tooltipData.setTooltipText("It looks like your AMEX account has been locked.\n\nLogin or contact AMEX directly to unlock your account ");
+
+
         new TooltipDialog.Builder()
                 .setupTooltipDialog(tooltipData, false)
+                .disallowReshowDialog(v)
                 .show(getSupportFragmentManager());
     }
 }

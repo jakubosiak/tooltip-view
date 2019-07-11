@@ -1,5 +1,6 @@
 package pl.biokod.praca.tooltipview;
 
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
@@ -24,6 +25,8 @@ public class TooltipDialog extends DialogFragment {
 
     private TooltipData tooltipData;
     private boolean showCloseButton = false;
+
+    private TooltipDialogCallback callback;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -98,10 +101,21 @@ public class TooltipDialog extends DialogFragment {
     }
 
 
+    @Override
+    public void onDismiss(DialogInterface dialog) {
+        super.onDismiss(dialog);
+        if (callback != null)
+            callback.onDismiss();
+    }
+
     private void setupWindowLayoutParams(Window window) {
         WindowManager.LayoutParams layoutParams = window.getAttributes();
         layoutParams.y = tooltipLayout.getYOnScreenPointingTheClickedView();
         window.setAttributes(layoutParams);
+    }
+
+    public void setCallback(TooltipDialogCallback callback) {
+        this.callback = callback;
     }
 
     static class Builder {
@@ -119,6 +133,17 @@ public class TooltipDialog extends DialogFragment {
             bundle.putBoolean(TOOLTIP_SHOW_CLOSE_BUTTON, showCloseButton);
             tooltipDialog.setArguments(bundle);
 
+            return this;
+        }
+
+        Builder disallowReshowDialog(final View clickedView) {
+            clickedView.setEnabled(false);
+            tooltipDialog.setCallback(new TooltipDialogCallback() {
+                @Override
+                public void onDismiss() {
+                    clickedView.setEnabled(true);
+                }
+            });
             return this;
         }
 
